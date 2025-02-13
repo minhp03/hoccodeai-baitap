@@ -2,32 +2,37 @@ import gradio as gr
 from diffusers import DiffusionPipeline
 import torch
 
-def load_pipeline(model_name):
-    model_map = {
-        "v1.5": "sd-legacy/stable-diffusion-v1-5",
-        "v1.0": "sd-legacy/stable-diffusion-v1-0"
-    }
-    pipeline = DiffusionPipeline.from_pretrained(model_map[model_name], use_safetensors=True)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    pipeline.to(device)
-    return pipeline
 
-def generate_image(model_name,prompt,negative_prompt,seed, num_inference_steps,guidance_scale
-                   ):
-    pipeline = load_pipeline(model_name)
-    generate_images = pipeline(
-        prompt=prompt,
-        model_name=model_name,
-        negative_prompt=negative_prompt,
-        height=512,
-        width=512,
-        #guidance is use to control the style of the image
-        guidance_scale=guidance_scale,
-        #num_inference_steps is the number of steps to generate the image ,
-        seed = seed,        #more inference step lead to higher quality but increasing computation time
-        num_inference_steps=num_inference_steps)
-    return generate_images.images[0]
+class Predictor:
+    def __init__(self,model_name):
+        model_map = {
+            "v1.5": "sd-legacy/stable-diffusion-v1-5",
+            "v1.0": "sd-legacy/stable-diffusion-v1-0"
+        }
+        self.pipeline = DiffusionPipeline.from_pretrained(model_map[model_name], use_safetensors=True)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.pipeline.to(device)
+
+    def generate_image(self,prompt,negative_prompt,seed, num_inference_steps,guidance_scale):
+
+        generate_images = self.pipeline(
+            prompt=prompt,
+            model_name=model_name,
+            negative_prompt=negative_prompt,
+            height=512,
+            width=512,
+            #guidance is use to control the style of the image
+            guidance_scale=guidance_scale,
+            #num_inference_steps is the number of steps to generate the image ,
+            seed = seed,        #more inference step lead to higher quality but increasing computation time
+            num_inference_steps=num_inference_steps)
+        return generate_images.images[0]
     
+def generate_image(model_name, prompt, negative_prompt, seed, num_inference_steps, guidance_scale):
+    predictor = Predictor(model_name)
+    return predictor.generate_image(prompt, negative_prompt, seed, num_inference_steps, guidance_scale)
+
+        
 
 with gr.Blocks() as demo:
     gr.Markdown("## Diffusion picture generate")
