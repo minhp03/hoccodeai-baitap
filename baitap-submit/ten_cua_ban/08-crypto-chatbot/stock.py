@@ -11,10 +11,7 @@ from pydantic import TypeAdapter
 from pydantic import BaseModel
 from openai import OpenAI
 load_dotenv()
-
-while True:
-
-    def get_symbol(company: str) -> str:
+def get_symbol(company: str) -> str:
         url = "https://query2.finance.yahoo.com/v1/finance/search"
         params = {"q": company, "country" : "United States"}
         user_agents = {
@@ -25,7 +22,7 @@ while True:
 
     #print(get_symbol("Apple Inc."))
 
-    def get_stock_price(symbol: str):
+def get_stock_price(symbol: str):
         stock = yf.Ticker(symbol)
         hist = stock.history(period="1d", interval="1m")
         latest = hist.iloc[-1]
@@ -38,33 +35,74 @@ while True:
             "volume": latest["Volume"]
         }
 
-    #print(get_stock_price("AAPL"))
-    # from pprint import pprint
-    # print(get_symbol("Nvidia"))
 
-    # nvidia_symbol = get_symbol("Nvidia")
-    # print("nvdia symbol: ", nvidia_symbol)
+while True:
+    get_symbol_description = {
+        "name"  : "get_symbol",
+        "description" : "Get the stock symbol for a given company, e.g. 'AAPL' for Apple Inc.",
+        "parameters" : {
+            "type": "object",
+            "properties:": {
+                "company": {
+                    "type": "string",
+                    "description": "The name of the company to get the stock symbol for"
+                }
+            },
+            "required": ["company"]
+        }
+        
+    }
+    get_stock_description = {
+        "name": "get_stock_price",
+        "description": "Get the latest stock price for a given stock symbol",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "The stock symbol to get the price for"
+                }
+            },
+            "required": ["symbol"]
+        }
+    }
 
-    # pprint(get_stock_price(nvidia_symbol))
 
 
-
+    # tool = [
+    #     {
+    #         "type":"function",
+    #         "function": get_symbol,
+    #         "name":"get_symbol",
+    #         "description": inspect.getdoc(get_symbol),
+    #         "parameters": TypeAdapter(get_symbol).json_schema()
+        
+    #     },
+    #     {
+    #         "type":"function",
+    #         "function": get_stock_price,
+    #         "name":"get_stock_price",
+    #         "description": inspect.getdoc(get_stock_price),
+    #         "parameters": TypeAdapter(get_stock_price).json_schema()
+        
+    #     }
+    # ]
     tool = [
         {
             "type":"function",
-            "function":{
+            "function": {
             "name":"get_symbol",
-            "description": inspect.getdoc(get_symbol),
+            "description": inspect.getdoc(get_symbol_description),
             "parameters": TypeAdapter(get_symbol).json_schema()
-        }
+            }
         },
         {
             "type":"function",
-            "function":{
+            "function": {
             "name":"get_stock_price",
-            "description": inspect.getdoc(get_stock_price),
+            "description": inspect.getdoc(get_stock_description),
             "parameters": TypeAdapter(get_stock_price).json_schema()
-        }
+            }
         }
     ]
 
@@ -141,10 +179,18 @@ while True:
         tool_call_function = tool_call.function
         tool_call_arguments = json.loads(tool_call_function.arguments)
         # Ở đây có nhiều hàm, nên ta phải check `name` để chọn hàm cần gọi
-        if tool_call_function.name == "get_symbol":
-            result = get_symbol(tool_call_arguments.get("company"))
-        elif tool_call_function.name == "get_stock_price":
-            result = get_stock_price(tool_call_arguments.get("symbol"))
+
+        FUNCTION_MAP = {
+            "get_symbol": get_symbol,
+            "get_stock_price": get_stock_price
+        }
+        tool_function = FUNCTION_MAP[tool_call_function.name]
+        result = tool_function(**tool_call_arguments)
+
+        # if tool_call_function.name == "get_symbol":
+        #     result = get_symbol(tool_call_arguments.get("company"))
+        # elif tool_call_function.name == "get_stock_price":
+        #     result = get_stock_price(tool_call_arguments.get("symbol"))
         messages.append(first_choice.message)
         messages.append({
             "role": "tool",
